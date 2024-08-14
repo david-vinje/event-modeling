@@ -1,4 +1,4 @@
-roles:
+ui:
   - &manager Manager
   - &guest Guest
 
@@ -8,61 +8,94 @@ services:
   - &payment Payment
   - &gps GPS
 
+patters:
+  - &command
+  - &view
+  - &automation
+  - &translation
+
+# Building blocks: Trigger, Event, Command, View, Automation, Translation
+# Patterns: Command, View, Automation, Translation
+
+# Command:          Trigger -> Command -> Event(s)
+# View:             Event(s) -> View -> Trigger
+# Automation:       Event(s) -> View -> Automation -> Command -> Event(s)
+# Translation:      Event(s) -> View -> Translation -> Command -> Event(s) 
+
 process:
   id: hotel_notification_system
   name: Hotel room booking system
-  slices: 
+  slices:
     - id: register
-      type: command
-      role: *guest
-      text: Register
-      service: *auth
-      service_text: Registered
+      pattern: *command
+      trigger:
+        name: Register
+        ui: *guest
+      command:
+        name: Register
+      event:
+        name: Registered
+        service: *auth
 
     - id: add_room
-      type: command
-      role: *manager
-      text: "Add\nRoom"
-      service: *inventory
-      service_text: "Room\nAdded"
-    
-    - id: room_added
-      type: view
-      role: *guest
-      service: *inventory
-      text: "Room\nAvailability"
+      pattern: *command
+      trigger: 
+        name: "Add\nRoom"
+        ui: *manager
+      command:
+        name: "Add\nRoom"
+      event:
+        name: "Room\nAdded"
+        service: *inventory
+        
+    - id: room_availability
+      pattern: *view
+      event:
+        name: "Room\nAdded"
+        service: *inventory
+      view:
+        name: "Room\nAvailability"
+      trigger:
+        name: "Room\nAvailability"
+        ui: *guest
 
     - id: book_room
-      type: command
-      role: *guest
-      text: "Book\nRoom"
-      service: *inventory
-      service_text: "Room\nBooked"
-    
-    - id: room_booked
-      type: view
-      role: *manager
-      service: *inventory
-      text: "Cleaning\nSchedule"
+      pattern: *command
+      trigger: 
+        name: "Book\nRoom"
+        ui: *guest
+      command:
+        name: "Book\nRoom"
+      event:
+        name: "Room\nBooked"
+        service: *inventory
+        
+    - id: cleaning_schedule
+      pattern: *view
+      event:
+        name: "Room\nBooked"
+        service: *inventory
+      view:
+        name: "Cleaning\nSchedule"
+      trigger:
+        name: "Cleaning\nSchedule"
+        ui: *manager
 
     - id: ready_room
-      type: command
-      role: *manager
-      text: "Ready\nRoom"
-      service: *inventory
-      service_text: "Room\nReadied"
+      pattern: *command
+      trigger:
+        name: "Cleaning\nSchedule"
+        ui: *manager
+      command:
+        name: "Ready\nRoom"
+      event:
+        name: "Room\nReadied"
+        service: *inventory
 
-    - id: check_in
-      type: command
-      role: *guest
-      text: "Check\nIn"
-      service: *inventory
-      service_text: "Checked\nIn"
-      
     # - id: proximity
-    #   type: command
-    #   role: *guest
-    #   text: null
+    #   pattern: command
+    #   ui: *guest
+    #   name: null
     #   service: *gps
     #   service_text: 
     #     - |
@@ -77,8 +110,3 @@ process:
     #     - |
     #       Lat: 51.04836
     #       Long: 8.66790
-
-    
-  
-
-

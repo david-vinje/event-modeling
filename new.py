@@ -86,7 +86,7 @@ def up_arrow(start_x, start_y, end_x, end_y):
 
 # Add UI/API elements and connect them with arrows
 for slice in slices:
-  if slice['type'] == 'command':
+  if slice['pattern'] == 'command':
     add_block(
       x=x, 
       y=y_positions[slice['role']], 
