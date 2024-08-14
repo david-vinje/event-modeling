@@ -8,15 +8,14 @@ services:
   - &payment Payment
   - &gps GPS
 
-patters:
-  - &command
-  - &view
-  - &automation
-  - &translation
+patterns:
+  - &command command
+  - &view view
+  - &automation automation
+  - &translation translation
 
 # Building blocks: Trigger, Event, Command, View, Automation, Translation
 # Patterns: Command, View, Automation, Translation
-
 # Command:          Trigger -> Command -> Event(s)
 # View:             Event(s) -> View -> Trigger
 # Automation:       Event(s) -> View -> Automation -> Command -> Event(s)
@@ -24,7 +23,7 @@ patters:
 
 process:
   id: hotel_notification_system
-  name: Hotel room booking system
+  name: "Hotel Room\nBooking System"
   slices:
     - id: register
       pattern: *command
@@ -92,21 +91,14 @@ process:
         name: "Room\nReadied"
         service: *inventory
 
-    # - id: proximity
-    #   pattern: command
-    #   ui: *guest
-    #   name: null
-    #   service: *gps
-    #   service_text: 
-    #     - |
-    #       Lat: 50.04836
-    #       Long: 8.56790
-    #     - |
-    #       Lat: 51.04836 
-    #       Long: 8.56790
-    #     - |
-    #       Lat: 50.04836 
-    #       Long: 8.66790
-    #     - |
-    #       Lat: 51.04836
-    #       Long: 8.66790
+    - id: check_in
+      pattern: *command
+      trigger:
+        name: "Check\nIn"
+        ui: *guest
+      command:
+        name: "Check\nIn"
+      event:
+        name: "Checked\nIn"
+        service: *inventory
+        

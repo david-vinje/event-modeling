@@ -6,138 +6,160 @@ from yaml import safe_load
 data = safe_load(open('new.yml'))
 slices = data['process']['slices']
 
-# Setup the figure
-fig = plt.figure()
+# setup the figure
+fig, ax = plt.subplots()
+print(fig)
 fig.suptitle(data['process']['name'])
-ax = fig.gca()
 
-# Define colors
+# define colors
 colors = {
-  'service': 'orange',
+  'event': 'orange',
   'view': '#9acd32',
   'command': '#00bfff',
-  'trigger': '#d3d3d3'
+  'ui': '#d3d3d3'
 }
 
+# define block dimensions
 block_width = 1.5
-block_height = 1
+block_height = 1.5
 
+# axes functions
 x, y = 0, 0
 def offset_x(modifier = 0.5):
   global x
   x += block_width * modifier
 
-def offset_y():
+def offset_y(modifier = 2):
   global y
-  y += block_height * 2
+  y += block_width * modifier
 
-# Define positions for the swimlanes
 y_positions = {}
-for service in reversed(data['services']):
-  y_positions[service] = y
-  offset_y()
-
-command_view_y_position = y
-offset_y()
-
-for role in reversed(data['roles']):
-  y_positions[role] = y
-  offset_y()
-
+def add_y_position(block: str):
+  global y
+  y_positions[block] = y
+  
+# define swimlanes
 swimlane_length = len(slices) * 3
-swimlanes_height = y
 
-# Add swimlanes
-line = plt.Line2D((0, 0), (0, 0), lw=0)
-for label, y in y_positions.items():
-  ax.text(-1, y, label, va='center', ha='right', fontsize=12, fontweight='bold')
-  ax.add_patch(Rectangle(
-    (0, y-0.5), 
-    width = swimlane_length, 
-    height = block_height, 
-    fill=False, edgecolor='black'
-  ))
+labels = data['services'] + ['command_view', 'automation_translation'] + data['ui']
+for label in labels:
+  add_y_position(label)
+  if not (label is 'command_view' or label is 'automation_translation'):
+    ax.text(-1, y, label, va='center', ha='right', fontsize=12, fontweight='bold')
+    ax.add_patch(
+      Rectangle(
+        (0, y - block_height/2), 
+        width = swimlane_length, 
+        height = block_height, 
+        fill=False, 
+        edgecolor='black'
+      )
+    )
+  offset_y()
     
-# Function to add elements
+# functions to add elements
 def add_block(x, y, color, text):
-  ax.add_patch(Rectangle(
-    (x, y-0.5), 
-    width=block_width, 
-    height=block_height,
-    color=color
-  ))
+  ax.add_patch(
+    Rectangle(
+      (x, y - block_height / 2), 
+      width=block_width, 
+      height=block_height,
+      color=color
+    )
+  )
   ax.text(x+block_width/2, y, text, ha='center', va='center', fontsize=8, color='black')
 
 def down_arrow(start_x, start_y, end_x, end_y):
-  ax.add_patch(FancyArrowPatch(
-    (start_x + block_width * 0.75, start_y - block_height * 0.5), 
-    (end_x + block_width * 0.75, end_y + block_height * 0.5),
-    # connectionstyle='arc3,rad=0.3',
-    mutation_scale=8
-  ))
+  ax.add_patch(
+    FancyArrowPatch(
+      (start_x + block_width * 0.75, start_y - block_height * 0.5), 
+      (end_x + block_width * 0.75, end_y + block_height * 0.5),
+      # connectionstyle='arc3,rad=0.3',
+      mutation_scale=8
+      )
+    )
   
 def up_arrow(start_x, start_y, end_x, end_y):
-  ax.add_patch(FancyArrowPatch(
-    (start_x - block_width * 0.25, start_y + block_height * 0.5), 
-    (end_x + block_width * 0.25, end_y - block_height * 0.5),
-    # connectionstyle='arc3,rad=0.3',
-    mutation_scale=8
-  ))
+  ax.add_patch(
+    FancyArrowPatch(
+      (start_x - block_width * 0.25, start_y + block_height * 0.5), 
+      (end_x + block_width * 0.25, end_y - block_height * 0.5),
+      # connectionstyle='arc3,rad=0.3',
+      mutation_scale=8
+    )
+  )
 
-# Add UI/API elements and connect them with arrows
-for slice in slices:
-  if slice['pattern'] == 'command':
-    add_block(
-      x=x, 
-      y=y_positions[slice['role']], 
-      color=colors['trigger'], 
-      text=slice['id']
-    )
-    down_arrow(
-      x, y_positions[slice['role']], 
-      x, command_view_y_position
-    )
-    offset_x()
-    add_block(
-      x=x, 
-      y=command_view_y_position, 
-      color=colors['command'], 
-      text=slice['text']
-    )
-    down_arrow(
-      x, command_view_y_position,
-      x, y_positions[slice['service']]
-    )
-    offset_x()
-    add_block(
-      x=x,
-      y=y_positions[slice['service']], 
-      color=colors['service'], 
-      text=slice['service_text']
-    )
-  elif slice['type'] == 'view':
-    offset_x()
-    up_arrow(
-      x, y_positions[slice['service']],
-      x, command_view_y_position
-    )
-    add_block(
-      x=x, 
-      y=command_view_y_position, 
-      color=colors['view'], 
-      text=slice['text']
-    )
-    up_arrow(
-      x + block_width, command_view_y_position,
-      x + block_width * 0.75, y_positions[slice['role']]
-    )
-    offset_x(modifier=0.25)
+def add_command_pattern():
+  # UI block
+  add_block(
+    x = x, 
+    y = y_positions[slice['trigger']['ui']], 
+    color = colors['ui'], 
+    text = slice['trigger']['name']
+  )
+  
+  # UI -> command
+  down_arrow(
+    x, y_positions[slice['trigger']['ui']],
+    x, y_positions['command_view']
+  )
   offset_x()
   
-# Set limits and remove axes
-ax.set_xlim(-1, swimlane_length + 1)
-ax.set_ylim(-1, swimlanes_height)
+  # command block
+  add_block(
+    x = x, 
+    y = y_positions['command_view'], 
+    color = colors['command'], 
+    text = slice['command']['name']
+  )
+  
+  # command -> event
+  down_arrow(
+    x, y_positions['command_view'],
+    x, y_positions[slice['event']['service']]
+  )
+  offset_x()
+  
+  # event block
+  add_block(
+    x = x, 
+    y = y_positions[slice['event']['service']], 
+    color = colors['event'], 
+    text = slice['event']['name']
+  )
+  offset_x()
+  
+def add_view_pattern():
+  # event -> view
+  # view block
+  # view -> UI
+  pass
+  
+def add_automation_pattern():
+  pass
+
+def add_translation_pattern():
+  pass
+
+# add patterns
+for slice in slices:
+  pattern = slice['pattern']
+  match pattern:
+    case 'command':
+      add_command_pattern()
+    case 'view':
+      add_view_pattern()
+    case 'automation':
+      add_automation_pattern()
+    case 'translation':
+      add_translation_pattern()
+    case _:
+      raise Exception(f'No such pattern: {pattern}')
+  
+# set limits and remove axes
+ax.set_xlim(-block_width, swimlane_length)
+ax.set_ylim(-block_height, y + 1)
 ax.axis('off')
 
-# Show the plot
+# show the plot
 plt.show()
