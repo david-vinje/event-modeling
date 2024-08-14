@@ -1,0 +1,197 @@
+process:
+  name: "Purchase flow"
+  types:
+    enums:
+      ShippingMethod:
+        - "UPS"
+        - "FedEx"
+        - "DHL"
+    data_objects:
+      ShippingAddress:
+        - "recipientFirstName: String"
+        - "recipientLastName: String"
+        - "street: String"
+        - "zipCode: String"
+        - "city: String"
+        - "country: String"
+      InvoiceAddress:
+        - "firstName: String"
+        - "lastName: String"
+        - "street: String"
+        - "zipCode: String"
+        - "city: String"
+        - "country: String"
+      Item:
+        - "productId: ProductId"
+        - "quantity: Int"
+  slices:
+    - id: "UI-Command-Event-AddItem"
+      ui:
+        role: "User"
+        action: "Add Item to Shopping Basket"
+        interface: "WebShop UI"
+      service:
+        name: "Sales"
+        command:
+          name: "AddItemToShoppingBasket"
+          identity_property: "basketId: BasketId"
+          additional_properties:
+            - "productId: ProductId"
+      event:
+        name: "ItemAddedToShoppingBasket"
+        properties:
+          identity_property: "basketId: BasketId"
+          additional_properties:
+            - "productId: ProductId"
+        description: "Indicates that an item has been successfully added to the shopping basket."
+        
+    - id: "TriggerEvent-View-UpdateShoppingBasket"
+      trigger_event: "ItemAddedToShoppingBasket"
+      views:
+        - name: "ShoppingBasket"
+          identity_property: "basketId: BasketId"
+          additional_properties:
+            - "items: Item[]"
+      ui:
+        role: "User"
+        actions:
+          - action: "View Shopping Basket"
+            interface: "WebShop UI"
+    
+    - id: "UI-Command-Event-RequestCheckOut"
+      ui:
+        role: "User"
+        action: "Request Checkout"
+        interface: "WebShop UI"
+      service:
+        name: "Sales"
+        command:
+          name: "RequestCheckOut"
+          identity_property: "basketId: BasketId"
+          additional_properties:
+            - "orderId: OrderId"
+      event:
+        name: "CheckOutRequested"
+        properties:
+          identity_property: "basketId: BasketId"
+          additional_properties:
+            - "orderId: OrderId"
+        description: "Indicates that a checkout has been requested for the shopping basket."
+        
+    - id: "TriggerEvent-View-UpdateShoppingBasketWithOrderId"
+      trigger_event: "CheckOutRequested"
+      views:
+        - name: "ShoppingBasket"
+          identity_property: "basketId: BasketId"
+          additional_properties:
+            - "orderId: OrderId"
+            - "items: Item[]"
+      ui:
+        role: "User"
+        actions:
+          - action: "View Shopping Basket"
+            interface: "WebShop UI"
+    
+    - id: "UI-Command-Event-AddShippingDetails"
+      ui:
+        role: "User"
+        action: "Add Shipping Details to Order"
+        interface: "WebShop UI"
+      service:
+        name: "Shipping"
+        command:
+          name: "AddShippingDetailsToOrder"
+          identity_property: "orderId: OrderId"
+          additional_properties:
+            - "shippingAddress: ShippingAddress"
+            - "shippingMethod: ShippingMethod"
+      event:
+        name: "ShippingDetailsAddedToOrder"
+        properties:
+          identity_property: "orderId: OrderId"
+          additional_properties:
+            - "shippingAddress: ShippingAddress"
+            - "shippingMethod: ShippingMethod"
+        description: "Indicates that the shipping details have been successfully added to the order."
+    
+    - id: "TriggerEvent-View-UpdateOrderShippingDetails"
+      trigger_event: "ShippingDetailsAddedToOrder"
+      views:
+        - name: "OrderShippingDetails"
+          identity_property: "orderId: OrderId"
+          additional_properties:
+            - "shippingAddress: ShippingAddress"
+            - "shippingMethod: ShippingMethod"
+      ui:
+        role: "User"
+        actions:
+          - action: "View Order Shipping Details"
+            interface: "WebShop UI"
+
+    - id: "UI-Command-Event-AddPaymentDetails"
+      ui:
+        role: "User"
+        action: "Add Payment Details to Order"
+        interface: "WebShop UI"
+      service:
+        name: "Payment"
+        command:
+          name: "AddPaymentDetailsToOrder"
+          identity_property: "orderId: OrderId"
+          additional_properties:
+            - "invoiceAddress: InvoiceAddress"
+            - "paymentDetails: PaymentDetails"
+      event:
+        name: "PaymentDetailsAddedToOrder"
+        properties:
+          identity_property: "orderId: OrderId"
+          additional_properties:
+            - "invoiceAddress: InvoiceAddress"
+            - "paymentDetails: PaymentDetails"
+        description: "Indicates that the payment details have been successfully added to the order."
+    
+    - id: "TriggerEvent-View-UpdateOrderPaymentDetails"
+      trigger_event: "PaymentDetailsAddedToOrder"
+      views:
+        - name: "OrderPaymentDetails"
+          identity_property: "orderId: OrderId"
+          additional_properties:
+            - "invoiceAddress: InvoiceAddress"
+            - "paymentDetails: PaymentDetails"
+      ui:
+        role: "User"
+        actions:
+          - action: "View Order Payment Details"
+            interface: "WebShop UI"
+
+    - id: "UI-Command-Event-PlaceOrder"
+      ui:
+        role: "User"
+        action: "Place Order"
+        interface: "WebShop UI"
+      service:
+        name: "Sales"
+        command:
+          name: "PlaceOrder"
+          identity_property: "orderId: OrderId"
+      event:
+        name: "OrderPlaced"
+        properties:
+          identity_property: "orderId: OrderId"
+        description: "Indicates that the order has been successfully placed."
+
+    - id: "TriggerEvent-TodoList-Command-Event-PackageOrder"
+      trigger_event: "OrderPlaced"
+      todo_list:
+        name: "Orders Ready for Packaging"
+        identity_property: "orderId: OrderId"
+      service:
+        name: "Shipping"
+        command:
+          name: "PackageOrder"
+          identity_property: "orderId: OrderId"
+      event:
+        name: "OrderPackagingRequested"
+        properties:
+          identity_property: "orderId: OrderId"
+        description: "Indicates that the order packaging process has been requested."

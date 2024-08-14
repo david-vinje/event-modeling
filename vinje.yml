@@ -1,0 +1,84 @@
+roles:
+  - &manager Manager
+  - &guest Guest
+
+services:
+  - &inventory Inventory
+  - &auth Auth
+  - &payment Payment
+  - &gps GPS
+
+process:
+  id: hotel_notification_system
+  name: Hotel room booking system
+  slices: 
+    - id: register
+      type: command
+      role: *guest
+      text: Register
+      service: *auth
+      service_text: Registered
+
+    - id: add_room
+      type: command
+      role: *manager
+      text: "Add\nRoom"
+      service: *inventory
+      service_text: "Room\nAdded"
+    
+    - id: room_added
+      type: view
+      role: *guest
+      service: *inventory
+      text: "Room\nAvailability"
+
+    - id: book_room
+      type: command
+      role: *guest
+      text: "Book\nRoom"
+      service: *inventory
+      service_text: "Room\nBooked"
+    
+    - id: room_booked
+      type: view
+      role: *manager
+      service: *inventory
+      text: "Cleaning\nSchedule"
+
+    - id: ready_room
+      type: command
+      role: *manager
+      text: "Ready\nRoom"
+      service: *inventory
+      service_text: "Room\nReadied"
+
+    - id: check_in
+      type: command
+      role: *guest
+      text: "Check\nIn"
+      service: *inventory
+      service_text: "Checked\nIn"
+      
+    # - id: proximity
+    #   type: command
+    #   role: *guest
+    #   text: null
+    #   service: *gps
+    #   service_text: 
+    #     - |
+    #       Lat: 50.04836
+    #       Long: 8.56790
+    #     - |
+    #       Lat: 51.04836 
+    #       Long: 8.56790
+    #     - |
+    #       Lat: 50.04836 
+    #       Long: 8.66790
+    #     - |
+    #       Lat: 51.04836
+    #       Long: 8.66790
+
+    
+  
+
+
