@@ -3,7 +3,7 @@ from matplotlib.patches import Rectangle, FancyArrowPatch
 from yaml import safe_load
 
 # read data
-data = safe_load(open('vinje.yml'))
+data = safe_load(open('new.yml'))
 slices = data['process']['slices']
 
 # Setup the figure
