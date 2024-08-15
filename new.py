@@ -5,6 +5,8 @@ from yaml import safe_load
 # read data
 data = safe_load(open('new.yml'))
 slices = data['process']['slices']
+services = list(reversed(data['services']))
+ui = list(reversed(data['ui']))
 
 # setup the figure
 fig, ax = plt.subplots()
@@ -40,11 +42,11 @@ def add_y_position(block: str):
   
 # define swimlanes
 swimlane_length = len(slices) * 3
+labels = services + ['command_view', 'automation_translation'] + ui
 
-labels = data['services'] + ['command_view', 'automation_translation'] + data['ui']
 for label in labels:
   add_y_position(label)
-  if not (label is 'command_view' or label is 'automation_translation'):
+  if not (label == 'command_view' or label == 'automation_translation'):
     ax.text(-1, y, label, va='center', ha='right', fontsize=12, fontweight='bold')
     ax.add_patch(
       Rectangle(
@@ -56,7 +58,7 @@ for label in labels:
       )
     )
   offset_y()
-    
+  
 # functions to add elements
 def add_block(x, y, color, text):
   ax.add_patch(
@@ -68,6 +70,45 @@ def add_block(x, y, color, text):
     )
   )
   ax.text(x+block_width/2, y, text, ha='center', va='center', fontsize=8, color='black')
+  
+
+def command_block():
+  add_block(
+    x = x, 
+    y = y_positions['command_view'], 
+    color = colors['command'], 
+    text = slice['command']['name']
+  )
+
+def view_block():
+  add_block(
+    x = x, 
+    y = y_positions['command_view'], 
+    color = colors['view'], 
+    text = slice['view']['name']
+  )
+  
+def automation_block():
+  pass
+  
+def translation_block():
+  pass
+
+def ui_block():
+  add_block(
+    x = x, 
+    y = y_positions[slice['trigger']['ui']], 
+    color = colors['ui'], 
+    text = slice['trigger']['name']
+  )
+  
+def event_block():
+  add_block(
+    x = x, 
+    y = y_positions[slice['event']['service']], 
+    color = colors['event'], 
+    text = slice['event']['name']
+  )
 
 def down_arrow(start_x, start_y, end_x, end_y):
   ax.add_patch(
@@ -89,72 +130,58 @@ def up_arrow(start_x, start_y, end_x, end_y):
     )
   )
 
-def add_command_pattern():
-  # UI block
-  add_block(
-    x = x, 
-    y = y_positions[slice['trigger']['ui']], 
-    color = colors['ui'], 
-    text = slice['trigger']['name']
-  )
-  
-  # UI -> command
+# UI -> command -> view 
+def add_command_pattern(slice):
+  ui_block()
   down_arrow(
     x, y_positions[slice['trigger']['ui']],
     x, y_positions['command_view']
   )
   offset_x()
-  
-  # command block
-  add_block(
-    x = x, 
-    y = y_positions['command_view'], 
-    color = colors['command'], 
-    text = slice['command']['name']
-  )
-  
-  # command -> event
+  command_block()
   down_arrow(
     x, y_positions['command_view'],
     x, y_positions[slice['event']['service']]
   )
   offset_x()
-  
-  # event block
-  add_block(
-    x = x, 
-    y = y_positions[slice['event']['service']], 
-    color = colors['event'], 
-    text = slice['event']['name']
-  )
+  event_block()
   offset_x()
   
-def add_view_pattern():
-  # event -> view
-  # view block
-  # view -> UI
-  pass
+# event -> view -> UI
+def add_view_pattern(slice):
+  offset_x()
+  up_arrow(
+    x, y_positions[slice['event']['service']],
+    x, y_positions['command_view']
+  )
+  view_block()
+  offset_x()
+  up_arrow(
+    x, y_positions['command_view'],
+    x, y_positions[slice['trigger']['ui']]
+  )
+  offset_x()
+  ui_block()
   
-def add_automation_pattern():
+def add_automation_pattern(slice):
   pass
 
-def add_translation_pattern():
+def add_translation_pattern(slice):
   pass
 
 # add patterns
 for slice in slices:
-  pattern = slice['pattern']
-  match pattern:
+  match slice['pattern']:
     case 'command':
-      add_command_pattern()
+      add_command_pattern(slice)
     case 'view':
-      add_view_pattern()
+      add_view_pattern(slice)
     case 'automation':
-      add_automation_pattern()
+      add_automation_pattern(slice)
     case 'translation':
-      add_translation_pattern()
+      add_translation_pattern(slice)
     case _:
-      raise Exception(f'No such pattern: {pattern}')
+      raise Exception(f'No such pattern: {slice['pattern']}')
   
 # set limits and remove axes
 ax.set_xlim(-block_width, swimlane_length)

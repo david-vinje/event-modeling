@@ -16,10 +16,10 @@ patterns:
 
 # Building blocks: Trigger, Event, Command, View, Automation, Translation
 # Patterns: Command, View, Automation, Translation
-# Command:          Trigger -> Command -> Event(s)
-# View:             Event(s) -> View -> Trigger
-# Automation:       Event(s) -> View -> Automation -> Command -> Event(s)
-# Translation:      Event(s) -> View -> Translation -> Command -> Event(s) 
+#   Command:          Trigger -> Command -> Event(s)
+#   View:             Event(s) -> View -> Trigger
+#   Automation:       Event(s) -> View -> Automation -> Command -> Event(s)
+#   Translation:      Event(s) -> View -> Translation -> Command -> Event(s) 
 
 process:
   id: hotel_notification_system
