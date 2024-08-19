@@ -84,7 +84,7 @@ add_element(x, y_positions["Shipping"], 2, 1, colors["Event"], "ShippingDetailsA
 add_arrow(x + 2, y_positions["Shipping"], x + 3, y_positions["Interaction"])
 
 x += 3.5
-add_element(x, y_positions["Inter2action"], 2, 1, colors["View"], "OrderShippingDetails\nView")
+add_element(x, y_positions["Interaction"], 2, 1, colors["View"], "OrderShippingDetails\nView")
 
 # Additional elements for Payment Details and Place Order process
 x = 0.5

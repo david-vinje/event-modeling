@@ -13,7 +13,6 @@ already_drawn = set()
 
 # setup the figure
 fig, ax = plt.subplots()
-print(fig)
 fig.suptitle(data['process']['name'])
 
 # define colors
@@ -21,7 +20,8 @@ colors = {
   'event': 'orange',
   'view': '#9acd32',
   'command': '#00bfff',
-  'ui': '#d3d3d3'
+  'ui': '#d3d3d3',
+  'processor': '#9932CC'
 }
 
 # define block dimensions
@@ -43,30 +43,16 @@ def add_y_position(block: str):
   global y
   y_positions[block] = y
   
-# define swimlanes
-swimlane_length = len(slices) * 2.5
-labels = services + ['command_view', 'api'] + roles
-
+# define y-positions
+labels = services + ['command_view', 'processor'] + roles
 for label in labels:
   add_y_position(label)
-  if not (label == 'command_view' or label == 'api'):
-    ax.text(-1, y, label, va='center', ha='right', fontsize=12, fontweight='bold')
-    ax.add_patch(
-      Rectangle(
-        (0, y - block_height/2), 
-        width = swimlane_length, 
-        height = block_height, 
-        fill=False, 
-        edgecolor='black'
-      )
-    )
   offset_y()
   
 # functions to add elements
 def add_block(x, y, color, text, id):
   if id in already_drawn:
     return
-  print(id)
   already_drawn.add(id)
   ax.add_patch(
     Rectangle(
@@ -87,30 +73,29 @@ def command_view_block(type):
     text = slice[type]['name']
   )
 
-def automation_block():
-  pass
-  
-def translation_block():
-  pass
+def processor_block():
+  y = y_positions['processor']
+  text = slice['processor']['name']
+  ax.text(x, y, '⚙️', ha='center', va='center', fontsize=32, color='black')
+  ax.text(x, y+block_height, text, ha='center', va='center', fontsize=8, color='black')
+
 
 def ui_block():
-  id = slice['trigger']['id']
-  # x = x+block_width if id in already_drawn else x
   add_block(
-    id = id,
-    x = x+block_width*2 if id in already_drawn else x, 
+    id = slice['trigger']['id'],
+    x = x,
     y = y_positions[slice['trigger']['role']], 
     color = colors['ui'], 
     text = slice['trigger']['name']
   )
   
-def event_block():
+def event_block(event):
   add_block(
-    id = slice['event']['id'],
+    id = event['id'],
     x = x, 
-    y = y_positions[slice['event']['service']], 
+    y = y_positions[event['service']], 
     color = colors['event'], 
-    text = slice['event']['name']
+    text = event['name']
   )
 
 def down_arrow(start_x, start_y, end_x, end_y):
@@ -126,20 +111,42 @@ def down_arrow(start_x, start_y, end_x, end_y):
 def up_arrow(start_x, start_y, end_x, end_y):
   ax.add_patch(
     FancyArrowPatch(
-      (start_x - block_width * 0.25, start_y + block_height * 0.5), 
-      (end_x + block_width * 0.25, end_y - block_height * 0.5),
+      (start_x + block_width * 0.25, start_y + block_height * 0.5), 
+      (end_x + block_width * 0.75, end_y - block_height * 0.5),
       # connectionstyle='arc3,rad=0.3',
       mutation_scale=8
     )
   )
-
-# trigger -> command -> view 
-def add_command_pattern():
-  ui_block()
-  down_arrow(
-    x, y_positions[slice['trigger']['role']],
+  
+# view: event -> view -> trigger
+def add_view_pattern():
+  event_block(slice['event'])
+  up_arrow(
+    x, y_positions[slice['event']['service']],
     x, y_positions['command_view']
   )
+  offset_x()
+  command_view_block('view')
+  up_arrow(
+    x, y_positions['command_view'],
+    x, y_positions[slice['trigger']['role']]
+  )
+  offset_x()
+  ui_block()
+
+# command: trigger -> command -> view 
+def add_command_pattern():
+  if slice['trigger']['id'] in already_drawn:
+    down_arrow(
+      x - block_width*0.5, y_positions[slice['trigger']['role']],
+      x, y_positions['command_view']
+    )
+  else:
+    ui_block()
+    down_arrow(
+      x, y_positions[slice['trigger']['role']],
+      x, y_positions['command_view']
+    )
   offset_x()
   command_view_block('command')
   down_arrow(
@@ -147,29 +154,39 @@ def add_command_pattern():
     x, y_positions[slice['event']['service']]
   )
   offset_x()
-  event_block()
-  offset_x()
-  
-# event -> view -> trigger
-def add_view_pattern():
-  event_block()
+  event_block(slice['event'])
+
+# automation: event -> view -> processor -> command -> event
+def add_automation_pattern():
+  event_block(slice['events'][0])
   up_arrow(
-    x, y_positions[slice['event']['service']],
+    x, y_positions[slice['events'][0]['service']],
     x, y_positions['command_view']
   )
+  offset_x()
   command_view_block('view')
   up_arrow(
-    x + block_width, y_positions['command_view'],
-    x + block_width, y_positions[slice['trigger']['role']]
+    x, y_positions['command_view'],
+    x, y_positions['processor']
+  )
+  offset_x(modifier=1)
+  processor_block()
+  down_arrow(
+    x - block_width*0.5, y_positions['processor'],
+    x, y_positions['command_view']
   )
   offset_x()
-  ui_block()
+  command_view_block('command')
+  down_arrow(
+    x,  y_positions['command_view'],
+    x, y_positions[slice['events'][1]['service']]
+  )
+  offset_x()
+  event_block(slice['events'][1])
   
-def add_automation_pattern():
-  pass
-
+# translation: event -> view -> processor -> command -> event
 def add_translation_pattern():
-  pass
+  add_automation_pattern()
 
 # add patterns
 for slice in slices:
@@ -185,10 +202,25 @@ for slice in slices:
     case _:
       raise Exception(f'No such pattern: {slice['pattern']}')
   offset_x()
-  
+    
+    
+# add swimlaness
+for label, y in y_positions.items():
+  if not (label == 'command_view' or label == 'processor'):
+    ax.text(-1, y, label, va='center', ha='right', fontsize=12, fontweight='bold')
+    ax.add_patch(
+      Rectangle(
+        (0, y - block_height/2), 
+        width = x + block_width/2, 
+        height = block_height, 
+        fill=False, 
+        edgecolor='black'
+      )
+    )
+
 # set limits and remove axes
-ax.set_xlim(-block_width, swimlane_length)
-ax.set_ylim(-block_height, y + 1)
+ax.set_xlim(-block_width, x)
+ax.set_ylim(-block_height, y + block_height)
 ax.axis('off')
 
 # show the plot

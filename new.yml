@@ -14,16 +14,17 @@ patterns:
   - &automation automation
   - &translation translation
 
-# Building blocks: Trigger (UI/API), Event, Command, View
+# Building blocks: UI, Processor, Event, Command, View
 # Patterns: Command, View, Automation, Translation
-#   Command:          Trigger -> Command -> Event
-#   View:             Event -> View -> Trigger
-#   Automation:       Event -> View -> Trigger -> Command -> Event
-#   Translation:      Event -> View -> Trigger -> Command -> Event
+
+# Command:          UI -> Command -> Event
+# View:             Event -> View -> Trigger
+# Automation:       Event -> View -> Processor -> Command -> Event
+# Translation:      Event -> View -> Processor -> Command -> Event
 
 process:
   id: hotel_notification_system
-  name: "Hotel Room\nBooking System"
+  name: "Hotel Room Booking System"
   slices:
     # Command: Trigger -> Command -> Event
     - id: register
@@ -132,7 +133,7 @@ process:
     
     # Command: Trigger -> Command -> Event
     - id: hotel_proximity
-      pattern: *translation
+      pattern: *command
       trigger:
         id: hotel_proximity_trigger
         name: "Hotel\nProximity"
@@ -145,7 +146,7 @@ process:
         name: "Guest Left\nHotel"
         service: *inventory
 
-    # Translation: Event -> View -> Trigger -> Command -> Event
+    # Translation: Event -> View -> Processor -> Command -> Event
     - id: checkout
       pattern: *translation
       events: 
@@ -158,9 +159,9 @@ process:
       view:
         id: guest_roster_view
         name: "Guest\nRoster"
-      trigger:
-        id: checkout_trigger
-        name: "Checkout Processor"
+      processor:
+        id: checkout_processor
+        name: "Checkout\nProcessor"
         role: *translation
       command:
         id: checkout_command
@@ -181,7 +182,7 @@ process:
         name: "Payment\nRequested"
         service: *payment
     
-    # Automation: Event -> View -> Trigger -> Command -> Event
+    # Automation: Event -> View -> Processor -> Command -> Event
     - id: payment
       pattern: *automation
       events: 
@@ -194,10 +195,10 @@ process:
       view:
         id: paymetns_to_process_view
         name: "Payments\nto Process"
-      trigger:
-        id: payment_processor_trigger
-        name: "Payment Processor"
-        role: *translation
+      processor:
+        id: payment_processor
+        name: "Payment\nProcessor"
+        role: *automation
       command:
         id: process_payment_command
         name: "Process\nPayment"
