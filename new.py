@@ -76,8 +76,8 @@ def command_view_block(type):
 def processor_block():
   y = y_positions['processor']
   text = slice['processor']['name']
-  ax.text(x, y, '⚙️', ha='center', va='center', fontsize=32, color='black')
-  ax.text(x, y+block_height, text, ha='center', va='center', fontsize=8, color='black')
+  ax.text(x+block_width*0.25, y, '⚙️', ha='center', va='center', fontsize=32, color='black')
+  ax.text(x+block_width*0.25, y+block_height, text, ha='center', va='center', fontsize=8, color='black')
 
 
 def ui_block():
@@ -163,11 +163,11 @@ def add_automation_pattern():
     x, y_positions[slice['events'][0]['service']],
     x, y_positions['command_view']
   )
-  offset_x()
+  offset_x(modifier=0.5)
   command_view_block('view')
   up_arrow(
-    x, y_positions['command_view'],
-    x, y_positions['processor']
+    x + block_width*0.5, y_positions['command_view'],
+    x + block_width*0.5, y_positions['processor']
   )
   offset_x(modifier=1)
   processor_block()
@@ -219,9 +219,10 @@ for label, y in y_positions.items():
     )
 
 # set limits and remove axes
-ax.set_xlim(-block_width, x)
+ax.set_xlim(-block_width, block_width*15)
 ax.set_ylim(-block_height, y + block_height)
 ax.axis('off')
 
 # show the plot
+# plt.grid()
 plt.show()
