@@ -1,4 +1,5 @@
-ui:
+roles:
+  - &gps GPS
   - &manager Manager
   - &guest Guest
 
@@ -6,7 +7,6 @@ services:
   - &inventory Inventory
   - &auth Auth
   - &payment Payment
-  - &gps GPS
 
 patterns:
   - &command command
@@ -14,91 +14,207 @@ patterns:
   - &automation automation
   - &translation translation
 
-# Building blocks: Trigger, Event, Command, View, Automation, Translation
+# Building blocks: Trigger (UI/API), Event, Command, View
 # Patterns: Command, View, Automation, Translation
-#   Command:          Trigger -> Command -> Event(s)
-#   View:             Event(s) -> View -> Trigger
-#   Automation:       Event(s) -> View -> Automation -> Command -> Event(s)
-#   Translation:      Event(s) -> View -> Translation -> Command -> Event(s) 
+#   Command:          Trigger -> Command -> Event
+#   View:             Event -> View -> Trigger
+#   Automation:       Event -> View -> Trigger -> Command -> Event
+#   Translation:      Event -> View -> Trigger -> Command -> Event
 
 process:
   id: hotel_notification_system
   name: "Hotel Room\nBooking System"
   slices:
+    # Command: Trigger -> Command -> Event
     - id: register
       pattern: *command
       trigger:
+        id: register_trigger
         name: Register
-        ui: *guest
+        role: *guest
       command:
+        id: register_command
         name: Register
       event:
+        id: registered_event
         name: Registered
         service: *auth
 
+    # Command: Trigger -> Command -> Event
     - id: add_room
       pattern: *command
-      trigger: 
+      trigger:
+        id: add_room_trigger
         name: "Add\nRoom"
-        ui: *manager
+        role: *manager
       command:
+        id: add_room_command
         name: "Add\nRoom"
       event:
+        id: room_added_event
         name: "Room\nAdded"
         service: *inventory
-        
+
+    # View: Event -> View -> Trigger
     - id: room_availability
       pattern: *view
       event:
+        id: room_added_event
         name: "Room\nAdded"
         service: *inventory
       view:
+        id: room_availability_view
         name: "Room\nAvailability"
       trigger:
-        name: "Room\nAvailability"
-        ui: *guest
+        id: book_room_trigger
+        name: "Book\nRoom"
+        role: *guest
 
+    # Command: Trigger -> Command -> Event
     - id: book_room
       pattern: *command
-      trigger: 
+      trigger:
+        id: book_room_trigger
         name: "Book\nRoom"
-        ui: *guest
+        role: *guest
       command:
+        id: book_room_command
         name: "Book\nRoom"
       event:
+        id: room_booked_event
         name: "Room\nBooked"
         service: *inventory
-        
+
+    # View: Event -> View -> Trigger
     - id: cleaning_schedule
       pattern: *view
       event:
+        id: room_booked_event
         name: "Room\nBooked"
         service: *inventory
       view:
+        id: cleaning_schedule_view
         name: "Cleaning\nSchedule"
       trigger:
+        id: cleaning_schedule_trigger
         name: "Cleaning\nSchedule"
-        ui: *manager
-
+        role: *manager
+    
+    # Command: Trigger -> Command -> Event
     - id: ready_room
       pattern: *command
       trigger:
+        id: cleaning_schedule_trigger
         name: "Cleaning\nSchedule"
-        ui: *manager
+        role: *manager
       command:
+        id: ready_room_command
         name: "Ready\nRoom"
       event:
+        id: room_readied_event
         name: "Room\nReadied"
         service: *inventory
 
+    # Command: Trigger -> Command -> Event
     - id: check_in
       pattern: *command
       trigger:
+        id: check_in_trigger
         name: "Check\nIn"
-        ui: *guest
+        role: *guest
       command:
+        id: check_in_command
         name: "Check\nIn"
       event:
+        id: checked_in_event
         name: "Checked\nIn"
         service: *inventory
-        
+    
+    # Command: Trigger -> Command -> Event
+    - id: hotel_proximity
+      pattern: *translation
+      trigger:
+        id: hotel_proximity_trigger
+        name: "Hotel\nProximity"
+        role: *gps
+      command:
+        id: hotel_proximity_command
+        name: "Hotel\nProximity"
+      event:
+        id: guest_left_event
+        name: "Guest Left\nHotel"
+        service: *inventory
+
+    # Translation: Event -> View -> Trigger -> Command -> Event
+    - id: checkout
+      pattern: *translation
+      events: 
+        - id: guest_left_event
+          name: "Guest Left\nHotel"
+          service: *inventory
+        - id: checked_out_event
+          name: "Checked\nOut" 
+          service: *inventory 
+      view:
+        id: guest_roster_view
+        name: "Guest\nRoster"
+      trigger:
+        id: checkout_trigger
+        name: "Checkout Processor"
+        role: *translation
+      command:
+        id: checkout_command
+        name: "Check\nOut"
+
+    # Command: Trigger -> Command -> Event
+    - id: pay
+      pattern: *command
+      trigger:
+        id: pay_trigger
+        name: Pay
+        role: *guest
+      command: 
+        id: pay_command
+        name: Pay
+      event:
+        id: payment_requested_event
+        name: "Payment\nRequested"
+        service: *payment
+    
+    # Automation: Event -> View -> Trigger -> Command -> Event
+    - id: payment
+      pattern: *automation
+      events: 
+        - id: payment_requested_event
+          name: "Payment\nRequested"
+          service: *payment
+        - id: payment_succeeded_event
+          name: "Payment\nSucceeded"
+          service: *payment
+      view:
+        id: paymetns_to_process_view
+        name: "Payments\nto Process"
+      trigger:
+        id: payment_processor_trigger
+        name: "Payment Processor"
+        role: *translation
+      command:
+        id: process_payment_command
+        name: "Process\nPayment"
+      
+    # View: Event -> View -> Trigger
+    - id: sales_report
+      pattern: *view
+      event:
+        id: payment_succeeded_event
+        name: "Payment\nSucceeded"
+        service: *payment
+      view:
+        id: sales_report_view
+        name: "Sales\nReport"
+      trigger:
+        id: sales_report_trigger
+        name: "Sales\nReport"
+        role: *manager
+
+
