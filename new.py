@@ -50,53 +50,82 @@ for label in labels:
   offset_y()
   
 # functions to add elements
-def add_block(x, y, color, text, id):
+def add_block(id, x, y, color, text):
+  id += '_block'
   if id in already_drawn:
     return
   already_drawn.add(id)
   ax.add_patch(
     Rectangle(
       (x, y - block_height / 2), 
-      width=block_width, 
-      height=block_height,
+      block_width, 
+      block_height,
       color=color
     )
   )
   ax.text(x+block_width/2, y, text, ha='center', va='center', fontsize=8, color='black')
+
+def identity_property(id, x, y, text):
+  id += '_identity_property'
+  if id in already_drawn:
+    return
+  already_drawn.add(id)
+  ax.text(
+    x, y, text,
+    ha='center',
+    va='center',
+    fontsize=8,
+    color='black'
+  )
+  
+def trigger_identity_property(trigger):
+  identity_property(
+    trigger['id'],
+    x + block_width/2,
+    y_positions[trigger['role']] + block_height * 0.75,
+    trigger['identity_property']
+  )
+
+def event_identity_property(event):
+  identity_property(
+    event['id'],
+    x + block_width/2,
+    y_positions[event['service']] - block_height * 0.75,
+    event['identity_property'],
+  )
+
+def ui_block():
+  trigger_identity_property(slice['trigger'])
+  add_block(
+    slice['trigger']['id'],
+    x, y_positions[slice['trigger']['role']], 
+    colors['ui'], 
+    slice['trigger']['name']
+  )
   
 def command_view_block(type):
   add_block(
-    id = slice[type]['id'],
-    x = x, 
-    y = y_positions['command_view'], 
-    color = colors[type], 
-    text = slice[type]['name']
+    slice[type]['id'],
+    x, y_positions['command_view'], 
+    colors[type], 
+    slice[type]['name']
   )
-
+  
+def event_block(event):
+  add_block(
+    event['id'],
+    x, y_positions[event['service']], 
+    colors['event'], 
+    event['name']
+  )
+  event_identity_property(event)
+  
 def processor_block():
   y = y_positions['processor']
   text = slice['processor']['name']
   ax.text(x, y, '⚙️', ha='center', va='center', fontsize=32, color='black')
   ax.text(x, y+block_height, text, ha='center', va='center', fontsize=8, color='black')
 
-
-def ui_block():
-  add_block(
-    id = slice['trigger']['id'],
-    x = x,
-    y = y_positions[slice['trigger']['role']], 
-    color = colors['ui'], 
-    text = slice['trigger']['name']
-  )
-  
-def event_block(event):
-  add_block(
-    id = event['id'],
-    x = x, 
-    y = y_positions[event['service']], 
-    color = colors['event'], 
-    text = event['name']
-  )
 
 def down_arrow(start_x, start_y, end_x, end_y):
   ax.add_patch(
@@ -118,24 +147,8 @@ def up_arrow(start_x, start_y, end_x, end_y):
     )
   )
   
-# view: event -> view -> trigger
-def add_view_pattern():
-  event_block(slice['event'])
-  up_arrow(
-    x, y_positions[slice['event']['service']],
-    x, y_positions['command_view']
-  )
-  offset_x()
-  command_view_block('view')
-  up_arrow(
-    x, y_positions['command_view'],
-    x, y_positions[slice['trigger']['role']]
-  )
-  offset_x()
-  ui_block()
-
 # command: trigger -> command -> view 
-def add_command_pattern():
+def command_pattern():
   if slice['trigger']['id'] in already_drawn:
     down_arrow(
       x - block_width*0.5, y_positions[slice['trigger']['role']],
@@ -155,9 +168,25 @@ def add_command_pattern():
   )
   offset_x()
   event_block(slice['event'])
+  
+# view: event -> view -> trigger
+def view_pattern():
+  event_block(slice['event'])
+  up_arrow(
+    x, y_positions[slice['event']['service']],
+    x, y_positions['command_view']
+  )
+  offset_x()
+  command_view_block('view')
+  up_arrow(
+    x, y_positions['command_view'],
+    x, y_positions[slice['trigger']['role']]
+  )
+  offset_x()
+  ui_block()
 
 # automation: event -> view -> processor -> command -> event
-def add_automation_pattern():
+def automation_pattern():
   event_block(slice['events'][0])
   up_arrow(
     x, y_positions[slice['events'][0]['service']],
@@ -185,20 +214,20 @@ def add_automation_pattern():
   event_block(slice['events'][1])
   
 # translation: event -> view -> processor -> command -> event
-def add_translation_pattern():
-  add_automation_pattern()
+def translation_pattern():
+  automation_pattern()
 
 # add patterns
 for slice in slices:
   match slice['pattern']:
     case 'command':
-      add_command_pattern()
+      command_pattern()
     case 'view':
-      add_view_pattern()
+      view_pattern()
     case 'automation':
-      add_automation_pattern()
+      automation_pattern()
     case 'translation':
-      add_translation_pattern()
+      translation_pattern()
     case _:
       raise Exception(f'No such pattern: {slice['pattern']}')
   offset_x()
@@ -219,7 +248,7 @@ for label, y in y_positions.items():
     )
 
 # set limits and remove axes
-ax.set_xlim(-block_width, x)
+ax.set_xlim(-block_width, x + block_width)
 ax.set_ylim(-block_height, y + block_height)
 ax.axis('off')
 
